@@ -41,26 +41,42 @@ with tab1:
 
     st.divider()
 
-    # Calculations
+    # Calculations - New Logic
+    # Step 1: Calculate buy fee and average price
+    total_buy_value = buy_price * quantity
+    buy_fee = total_buy_value * (FEE_PERCENTAGE / 100)
+    
+    # Average Price (Avg Price) = (Buy Value + Buy Fee) / Quantity
+    avg_price = (total_buy_value + buy_fee) / quantity
+    
+    # Total Cost = Avg Price × Quantity
+    total_cost = avg_price * quantity
+    
+    # STL Rate (Share Transaction Levy)
+    STL_RATE = 0.30 / 100
+    
+    # Step 2: Calculate B.E.S Price (Break-Even Sell Price)
     if same_day == "Same Day Trading":
-        total_buy_value = buy_price * quantity
-        buy_fee = total_buy_value * (FEE_PERCENTAGE / 100)
-        total_cost = total_buy_value + buy_fee
-        
-        total_sell_value = sell_price * quantity
-        sell_fee = 0
-        proceeds = total_sell_value
-        fee_count = "1x"
+        # For same day: Only STL (0.30%) on sell, no other transaction fees
+        # B.E.S Price needs to cover: Total Cost + STL on sell
+        # Total Cost = (B.E.S Price × Qty) - (B.E.S Price × Qty × 0.003)
+        # Total Cost = B.E.S Price × Qty × (1 - 0.003)
+        # B.E.S Price = Total Cost / (Qty × (1 - 0.003))
+        bes_price = total_cost / (quantity * (1 - STL_RATE))
+        # Calculate actual sell fee (only STL) based on sell price
+        sell_fee = sell_price * quantity * STL_RATE if sell_price > 0 else 0
     else:
-        total_buy_value = buy_price * quantity
-        buy_fee = total_buy_value * (FEE_PERCENTAGE / 100)
-        total_cost = total_buy_value + buy_fee
-        
-        total_sell_value = sell_price * quantity
-        sell_fee = total_sell_value * (FEE_PERCENTAGE / 100)
-        proceeds = total_sell_value - sell_fee
-        fee_count = "2x"
+        # For another day: B.E.S = Avg Price × 1.0112
+        bes_price = avg_price * (1 + FEE_PERCENTAGE / 100)
+        # Calculate sell fee based on sell price
+        sell_fee = sell_price * quantity * (FEE_PERCENTAGE / 100) if sell_price > 0 else 0
+    
+    # Step 3: Calculate proceeds from selling
+    total_sell_value = sell_price * quantity
+    proceeds = total_sell_value - sell_fee
+    fee_count = "Buy: 1.12%, Sell: 0.30% (STL only)" if same_day == "Same Day Trading" else "2x (buy 1.12% + sell 1.12%)"
 
+    # Calculate gain/loss
     gain_loss = proceeds - total_cost
     gain_loss_percentage = (gain_loss / total_cost) * 100 if total_cost > 0 else 0
 
@@ -75,9 +91,25 @@ with tab1:
     with col2:
         st.metric("Buy Price", f"Rs. {buy_price:.2f}")
     with col3:
-        st.metric("Fee (1.12%)", f"Rs. {buy_fee:.3f}")
+        st.metric("Buy Fee (1.12%)", f"Rs. {buy_fee:.2f}")
     with col4:
-        st.metric("Total Cost", f"Rs. {total_cost:.2f}", delta=None, delta_color="normal")
+        st.metric("Total Cost", f"Rs. {total_cost:.2f}")
+
+    # Show Average Price and B.E.S Price
+    st.markdown("### 📊 Price Analysis")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Avg Price", f"Rs. {avg_price:.4f}",
+                 delta=f"+Rs. {avg_price - buy_price:.4f}",
+                 help="Average price after including buy fee")
+    with col2:
+        st.metric("B.E.S Price (Break-Even)", f"Rs. {bes_price:.4f}",
+                 delta=f"+{((bes_price - buy_price) / buy_price * 100):.2f}%" if bes_price > buy_price else "0.00%",
+                 help="Minimum sell price to break even")
+    with col3:
+        price_move_needed = bes_price - buy_price
+        st.metric("Price Move to Break Even", f"Rs. {price_move_needed:.4f}",
+                 help="How much price needs to increase from original buy price")
 
     st.divider()
 
@@ -90,11 +122,11 @@ with tab1:
         st.metric("Sell Price", f"Rs. {sell_price:.2f}")
     with col3:
         if same_day == "Same Day Trading":
-            st.metric("Fee", "Rs. 0.00", help="No fee on same day sell")
+            st.metric("Sell Fee (STL 0.30%)", f"Rs. {sell_fee:.2f}", help="Only STL charged on same day sell")
         else:
-            st.metric("Fee (1.12%)", f"Rs. {sell_fee:.3f}")
+            st.metric("Sell Fee (1.12%)", f"Rs. {sell_fee:.2f}")
     with col4:
-        st.metric("Proceeds", f"Rs. {proceeds:.3f}")
+        st.metric("Proceeds", f"Rs. {proceeds:.2f}")
 
     st.divider()
 
@@ -104,9 +136,9 @@ with tab1:
 
     with col1:
         if gain_loss >= 0:
-            st.metric("Gain/Loss", f"Rs. {gain_loss:.3f}", delta=f"+{gain_loss:.3f}", delta_color="normal")
+            st.metric("Gain/Loss", f"Rs. {gain_loss:.2f}", delta=f"+{gain_loss:.2f}", delta_color="normal")
         else:
-            st.metric("Gain/Loss", f"Rs. {gain_loss:.3f}", delta=f"{gain_loss:.3f}", delta_color="inverse")
+            st.metric("Gain/Loss", f"Rs. {gain_loss:.2f}", delta=f"{gain_loss:.2f}", delta_color="inverse")
 
     with col2:
         if gain_loss_percentage >= 0:
@@ -116,44 +148,57 @@ with tab1:
 
     with col3:
         total_fees = buy_fee + sell_fee
-        st.metric("Total Fees", f"Rs. {total_fees:.3f}", help=f"Fee charged {fee_count}")
+        st.metric("Total Fees", f"Rs. {total_fees:.2f}", help=f"Fee charged {fee_count}")
 
     st.markdown("")
     st.markdown("")
     
     st.info(f"""
     **Fee Structure:**
-    - Transaction Fee: **{FEE_PERCENTAGE}%**
-    - Same Day Trading: Fee charged **once** (on buy only)
-    - Sell on Another Day: Fee charged **twice** (on buy and sell)
+    - Transaction Fee: **{FEE_PERCENTAGE}%** (includes 0.82% brokerage + 0.30% STL)
+    - Same Day Trading: Buy fee **1.12%**, Sell fee **0.30% (STL only)**
+    - Sell on Another Day: Fee charged **twice** (1.12% on buy and 1.12% on sell)
     """)
 
     with st.expander("📋 Detailed Breakdown"):
         st.markdown(f"""
         **Buy Transaction:**
-        - Quantity: {quantity} stocks
         - Buy Price per Stock: Rs. {buy_price:.2f}
+        - Quantity: {quantity} stocks
         - Total Buy Value: Rs. {total_buy_value:.2f}
-        - Buy Fee ({FEE_PERCENTAGE}%): Rs. {buy_fee:.3f}
+        - Buy Fee ({FEE_PERCENTAGE}%): Rs. {buy_fee:.2f}
         - **Total Cost: Rs. {total_cost:.2f}**
         
+        **Average Price Calculation:**
+        - Avg Price = (Buy Value + Buy Fee) ÷ Quantity
+        - Avg Price = (Rs. {total_buy_value:.2f} + Rs. {buy_fee:.2f}) ÷ {quantity}
+        - **Avg Price = Rs. {avg_price:.4f}**
+        
+        **Break-Even Analysis:**
+        - Avg Price: Rs. {avg_price:.4f}
+        - B.E.S Price: Rs. {bes_price:.4f}
+        {f"- B.E.S = Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if same_day == 'Same Day Trading' else f"- B.E.S = Avg Price × 1.0112 = Rs. {avg_price:.4f} × 1.0112"}
+        - Price Move Needed: Rs. {price_move_needed:.4f} ({((price_move_needed / buy_price) * 100):.2f}% from buy price)
+        
         **Sell Transaction:**
+        - Sell Price: Rs. {sell_price:.2f}
         - Quantity: {quantity} stocks
-        - Sell Price per Stock: Rs. {sell_price:.2f}
         - Total Sell Value: Rs. {total_sell_value:.2f}
-        - Sell Fee: Rs. {sell_fee:.3f} {'(No fee - same day)' if same_day == 'Same Day Trading' else f'({FEE_PERCENTAGE}%)'}
-        - **Proceeds: Rs. {proceeds:.3f}**
+        - Sell Fee: Rs. {sell_fee:.2f} {'(STL 0.30% only - same day)' if same_day == 'Same Day Trading' else f'({FEE_PERCENTAGE}% - full fee)'}
+        - **Proceeds: Rs. {proceeds:.2f}**
         
         **Summary:**
-        - Total Fees Paid: Rs. {total_fees:.3f}
-        - Net Gain/Loss: Rs. {gain_loss:.3f}
-        - Return on Investment: {gain_loss_percentage:.2f}%
+        - Total Cost: Rs. {total_cost:.2f}
+        - Proceeds: Rs. {proceeds:.2f}
+        - Total Fees: Rs. {total_fees:.2f}
+        - **Net Gain/Loss: Rs. {gain_loss:.2f}**
+        - **Return on Investment: {gain_loss_percentage:.2f}%**
         """)
 
 # ==================== TAB 2: Break-Even Calculator ====================
 with tab2:
     st.title("⚖️ Break-Even Calculator")
-    st.markdown("Calculate minimum sell price to break even after fees")
+    st.markdown("Calculate B.E.S Price (Break-Even Sell Price) from your buy price")
     
     st.subheader("📊 Input Details")
     
@@ -168,52 +213,63 @@ with tab2:
     be_same_day = st.radio(
         "Trading Type",
         options=["Same Day Trading", "Sell on Another Day"],
-        help="Same day trading: Fee charged once. Another day: Fee charged twice.",
+        help="Same day trading: No sell fee. Another day: Sell fee applies.",
         key="be_same_day"
     )
     
     st.divider()
     
-    # Calculate break-even
+    # Calculate with correct formula
+    # Step 1: Calculate Avg Price
     be_total_buy_value = be_buy_price * be_quantity
     be_buy_fee = be_total_buy_value * (FEE_PERCENTAGE / 100)
-    be_total_cost = be_total_buy_value + be_buy_fee
+    be_avg_price = (be_total_buy_value + be_buy_fee) / be_quantity
+    be_total_cost = be_avg_price * be_quantity
+    
+    # Step 2: Calculate B.E.S Price
+    # STL Rate (Share Transaction Levy)
+    STL_RATE = 0.30 / 100
     
     if be_same_day == "Same Day Trading":
-        # For same day: Sell price * quantity = total_cost
-        # No sell fee
-        be_sell_price = be_total_cost / be_quantity
-        be_sell_fee = 0
-        be_proceeds = be_sell_price * be_quantity
+        # For same day: Only STL (0.30%) on sell
+        # B.E.S Price = Total Cost / (Qty × (1 - 0.003))
+        be_bes_price = be_total_cost / (be_quantity * (1 - STL_RATE))
+        be_sell_fee = be_bes_price * be_quantity * STL_RATE
+        be_price_increase_from_buy = be_bes_price - be_buy_price
+        be_percentage_move_from_buy = (be_price_increase_from_buy / be_buy_price) * 100
     else:
-        # For another day: (Sell price * quantity) - sell_fee = total_cost
-        # sell_fee = (Sell price * quantity) * 0.0112
-        # (Sell price * quantity) * (1 - 0.0112) = total_cost
-        # Sell price = total_cost / (quantity * (1 - 0.0112))
-        be_sell_price = be_total_cost / (be_quantity * (1 - FEE_PERCENTAGE / 100))
-        be_sell_fee = (be_sell_price * be_quantity) * (FEE_PERCENTAGE / 100)
-        be_proceeds = (be_sell_price * be_quantity) - be_sell_fee
+        # For another day: B.E.S = Avg Price × 1.0112
+        be_bes_price = be_avg_price * (1 + FEE_PERCENTAGE / 100)
+        be_sell_fee = be_bes_price * be_quantity * (FEE_PERCENTAGE / 100)
+        be_price_increase_from_buy = be_bes_price - be_buy_price
+        be_percentage_move_from_buy = (be_price_increase_from_buy / be_buy_price) * 100
     
-    be_price_increase = be_sell_price - be_buy_price
-    be_percentage_move = (be_price_increase / be_buy_price) * 100
-    
-    # Display break-even results
+    # Display results
     st.subheader("🎯 Break-Even Analysis")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Break-Even Sell Price", f"Rs. {be_sell_price:.3f}", 
-                 help="Minimum sell price to recover all costs including fees")
+        st.metric("Buy Price", f"Rs. {be_buy_price:.2f}",
+                 help="Original buy price")
     
     with col2:
-        st.metric("Required Price Move", f"Rs. {be_price_increase:.3f}",
-                 delta=f"+{be_percentage_move:.2f}%",
-                 help="How much the stock price needs to increase")
+        st.metric("Avg Price", f"Rs. {be_avg_price:.4f}",
+                 delta=f"+Rs. {be_avg_price - be_buy_price:.4f}",
+                 help="Average price after buy fee")
     
     with col3:
-        st.metric("Break-Even %", f"{be_percentage_move:.2f}%",
-                 help="Percentage increase needed to break even")
+        st.metric("B.E.S Price", f"Rs. {be_bes_price:.4f}",
+                 delta=f"+{be_percentage_move_from_buy:.2f}%" if be_percentage_move_from_buy > 0 else "Break Even",
+                 help="Break-Even Sell Price")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Price Move from Buy Price", f"Rs. {be_price_increase_from_buy:.4f}",
+                 help="Total increase needed from original buy price")
+    with col2:
+        st.metric("% Move from Buy Price", f"{be_percentage_move_from_buy:.2f}%",
+                 help="Percentage increase from buy price to break even")
     
     st.divider()
     
@@ -223,20 +279,22 @@ with tab2:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Buy Cost", f"Rs. {be_total_buy_value:.2f}")
+        st.metric("Buy Value", f"Rs. {be_total_buy_value:.2f}")
     
     with col2:
-        st.metric("Buy Fee", f"Rs. {be_buy_fee:.3f}")
+        st.metric("Buy Fee", f"Rs. {be_buy_fee:.2f}")
     
     with col3:
-        if be_same_day == "Same Day Trading":
-            st.metric("Sell Fee", "Rs. 0.00", help="No fee on same day sell")
-        else:
-            st.metric("Sell Fee", f"Rs. {be_sell_fee:.3f}")
+        st.metric("Total Cost", f"Rs. {be_total_cost:.2f}",
+                 help=f"Avg Price × Quantity")
     
     with col4:
-        total_be_fees = be_buy_fee + be_sell_fee
-        st.metric("Total Fees", f"Rs. {total_be_fees:.3f}")
+        if be_same_day == "Same Day Trading":
+            st.metric("Sell Fee (STL)", f"Rs. {be_sell_fee:.2f}", 
+                     help="STL 0.30% on same day sell")
+        else:
+            st.metric("Sell Fee at B.E.S", f"Rs. {be_sell_fee:.2f}",
+                     help=f"Sell fee when selling at B.E.S price")
     
     st.divider()
     
@@ -244,31 +302,32 @@ with tab2:
     st.markdown("### 🎯 Profit Target Scenarios")
     st.markdown("Calculate sell prices for different profit targets:")
     
-    profit_targets = [0.5, 1.0, 2.0, 3.0, 5.0, 10.0]
+    profit_targets = [0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
     
     target_data = []
     
     for target_pct in profit_targets:
-        # Target profit amount
+        # Target profit amount based on total cost
         target_profit = be_total_cost * (target_pct / 100)
-        target_proceeds = be_total_cost + target_profit
+        target_proceeds_needed = be_total_cost + target_profit
         
         if be_same_day == "Same Day Trading":
-            # No sell fee for same day
-            target_sell_price = target_proceeds / be_quantity
+            # No sell fee: Sell Price × Qty = target_proceeds_needed
+            target_sell_price = target_proceeds_needed / be_quantity
         else:
-            # With sell fee
-            # target_proceeds = (sell_price * qty) - sell_fee
-            # target_proceeds = (sell_price * qty) - (sell_price * qty * 0.0112)
-            # target_proceeds = (sell_price * qty) * (1 - 0.0112)
-            target_sell_price = target_proceeds / (be_quantity * (1 - FEE_PERCENTAGE / 100))
+            # With sell fee: (Sell Price × Qty) - (Sell Price × Qty × 0.0112) = target_proceeds_needed
+            target_sell_price = target_proceeds_needed / (be_quantity * (1 - FEE_PERCENTAGE / 100))
+        
+        # Calculate moves from buy price
+        price_move = target_sell_price - be_buy_price
+        pct_move = (price_move / be_buy_price) * 100
         
         target_data.append({
             'Target Profit %': f"{target_pct}%",
             'Profit Amount': f"Rs. {target_profit:.2f}",
-            'Required Sell Price': f"Rs. {target_sell_price:.2f}",
-            'Price Increase': f"Rs. {target_sell_price - be_buy_price:.2f}",
-            'Total % Move': f"+{((target_sell_price - be_buy_price) / be_buy_price * 100):.2f}%"
+            'Required Sell Price': f"Rs. {target_sell_price:.4f}",
+            'Price Increase': f"Rs. {price_move:.4f}",
+            'Move from Buy Price': f"+{pct_move:.2f}%"
         })
     
     df = pd.DataFrame(target_data)
@@ -298,12 +357,12 @@ with tab2:
         st.metric("Target Profit Amount", f"Rs. {custom_profit_amount:.2f}")
     
     # Calculate custom target sell price
-    custom_proceeds = be_total_cost + custom_profit_amount
+    custom_proceeds_needed = be_total_cost + custom_profit_amount
     
     if be_same_day == "Same Day Trading":
-        custom_sell_price = custom_proceeds / be_quantity
+        custom_sell_price = custom_proceeds_needed / be_quantity
     else:
-        custom_sell_price = custom_proceeds / (be_quantity * (1 - FEE_PERCENTAGE / 100))
+        custom_sell_price = custom_proceeds_needed / (be_quantity * (1 - FEE_PERCENTAGE / 100))
     
     custom_move = custom_sell_price - be_buy_price
     custom_pct_move = (custom_move / be_buy_price) * 100
@@ -311,50 +370,70 @@ with tab2:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Required Sell Price", f"Rs. {custom_sell_price:.3f}")
+        st.metric("Required Sell Price", f"Rs. {custom_sell_price:.4f}")
     
     with col2:
-        st.metric("Price Increase Needed", f"Rs. {custom_move:.3f}")
+        st.metric("Price Increase Needed", f"Rs. {custom_move:.4f}")
     
     with col3:
-        st.metric("Total % Move Required", f"+{custom_pct_move:.2f}%")
+        st.metric("Move from Buy Price", f"+{custom_pct_move:.2f}%")
     
     st.divider()
     
     # Info box
     st.info(f"""
-    **Break-Even Explained:**
-    - Your total cost including fees: **Rs. {be_total_cost:.2f}**
-    - To break even, your proceeds after sell fees must equal this amount
-    - Same Day Trading: Lower break-even (fee charged once)
-    - Another Day Trading: Higher break-even (fee charged twice)
+    **How This Works:**
     
-    **Fee Impact:**
-    - Transaction Fee: **{FEE_PERCENTAGE}%**
-    - Total Fees to Break Even: **Rs. {total_be_fees:.3f}**
-    - Break-Even requires **{be_percentage_move:.2f}%** price increase
+    **Buy Price: Rs. {be_buy_price:.2f}**
+    - Your original buy price
+    
+    **Avg Price: Rs. {be_avg_price:.4f}**
+    - After adding buy fee (1.12%)
+    - Formula: (Buy Value + Buy Fee) ÷ Quantity
+    
+    **B.E.S Price: Rs. {be_bes_price:.4f}**
+    - Minimum price to break even
+    {f"- Formula: Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if be_same_day == 'Same Day Trading' else f"- Avg Price × 1.0112 = Rs. {be_avg_price:.4f} × 1.0112"}
+    - Needs **{be_percentage_move_from_buy:.2f}%** increase from buy price
+    
+    **Total Cost: Rs. {be_total_cost:.2f}**
+    - This is what you need to recover to break even
+    
+    **Fee Structure:**
+    {f"- Same Day: Buy 1.12%, Sell 0.30% (STL only)" if be_same_day == 'Same Day Trading' else f"- Multi-Day: Buy 1.12%, Sell 1.12% (full fees)"}
     """)
     
     # Detailed calculation
-    with st.expander("🔍 Detailed Break-Even Calculation"):
+    with st.expander("🔍 Detailed Break-Even Formula"):
         st.markdown(f"""
         **Step-by-Step Calculation:**
         
-        **Buy Side:**
-        1. Buy Price per Stock: Rs. {be_buy_price:.2f}
-        2. Quantity: {be_quantity} stocks
-        3. Total Buy Value: Rs. {be_buy_price:.2f} × {be_quantity} = Rs. {be_total_buy_value:.2f}
-        4. Buy Fee ({FEE_PERCENTAGE}%): Rs. {be_total_buy_value:.2f} × {FEE_PERCENTAGE/100} = Rs. {be_buy_fee:.3f}
-        5. **Total Cost: Rs. {be_total_buy_value:.2f} + Rs. {be_buy_fee:.3f} = Rs. {be_total_cost:.2f}**
+        **Step 1: Calculate Buy Fee and Avg Price**
+        - Buy Price: Rs. {be_buy_price:.2f}
+        - Quantity: {be_quantity}
+        - Buy Value: Rs. {be_buy_price:.2f} × {be_quantity} = Rs. {be_total_buy_value:.2f}
+        - Buy Fee (1.12%): Rs. {be_total_buy_value:.2f} × 0.0112 = Rs. {be_buy_fee:.2f}
+        - **Avg Price = (Rs. {be_total_buy_value:.2f} + Rs. {be_buy_fee:.2f}) ÷ {be_quantity}**
+        - **Avg Price = Rs. {be_avg_price:.4f}**
         
-        **Sell Side (Break-Even):**
-        {'6. Sell Fee: Rs. 0.00 (Same day trading - no sell fee)' if be_same_day == 'Same Day Trading' else f'6. Sell Fee ({FEE_PERCENTAGE}%): Rs. {be_sell_fee:.3f}'}
-        7. Required Proceeds: Rs. {be_proceeds:.3f} (must equal Total Cost)
-        8. **Break-Even Sell Price: Rs. {be_sell_price:.3f}**
+        **Step 2: Calculate Total Cost**
+        - Total Cost = Avg Price × Quantity
+        - Total Cost = Rs. {be_avg_price:.4f} × {be_quantity}
+        - **Total Cost = Rs. {be_total_cost:.2f}**
         
-        **Price Movement:**
-        9. Price Increase: Rs. {be_sell_price:.3f} - Rs. {be_buy_price:.2f} = Rs. {be_price_increase:.3f}
-        10. **Percentage Move: {be_percentage_move:.2f}%**
+        **Step 3: Calculate B.E.S Price**
+        {'- For Same Day: B.E.S Price = Total Cost ÷ (Qty × 0.997)' if be_same_day == 'Same Day Trading' else f'- For Another Day: B.E.S Price = Avg Price × 1.0112'}
+        {'- Accounts for 0.30% STL on sell' if be_same_day == 'Same Day Trading' else f'- B.E.S Price = Rs. {be_avg_price:.4f} × 1.0112'}
+        - **B.E.S Price = Rs. {be_bes_price:.4f}**
         
-        {'**Note:** For same day trading, you only need to cover the buy fee.' if be_same_day == 'Same Day Trading' else f'**Note:** For multi-day trading, both buy and sell fees ({total_be_fees:.3f}) must be covered.'}
+        **Step 4: Price Movement Analysis**
+        - From Buy Price: Rs. {be_bes_price:.4f} - Rs. {be_buy_price:.2f} = Rs. {be_price_increase_from_buy:.4f}
+        - **Percentage Move: {be_percentage_move_from_buy:.2f}%**
+        
+        **Key Formula:**
+        ```
+        Avg Price = (Buy Price × Qty + Buy Fee) ÷ Qty
+        Total Cost = Avg Price × Qty
+        {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [same day - includes STL]' if be_same_day == 'Same Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [another day - full fees]'}
+        ```
         """)
