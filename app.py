@@ -34,8 +34,8 @@ with tab1:
     # Trading day option
     same_day = st.radio(
         "Trading Type",
-        options=["Same Day Trading", "Sell on Another Day"],
-        help="Same day trading: Fee charged once. Another day: Fee charged twice.",
+        options=["Day Trading", "Swing Trading"],
+        help="Day trading: Fee charged once. Swing trading: Fee charged twice.",
         key="tab1_same_day"
     )
 
@@ -56,7 +56,7 @@ with tab1:
     STL_RATE = 0.30 / 100
     
     # Step 2: Calculate B.E.S Price (Break-Even Sell Price)
-    if same_day == "Same Day Trading":
+    if same_day == "Day Trading":
         # For same day: Only STL (0.30%) on sell, no other transaction fees
         # B.E.S Price needs to cover: Total Cost + STL on sell
         # Total Cost = (B.E.S Price × Qty) - (B.E.S Price × Qty × 0.003)
@@ -74,7 +74,7 @@ with tab1:
     # Step 3: Calculate proceeds from selling
     total_sell_value = sell_price * quantity
     proceeds = total_sell_value - sell_fee
-    fee_count = "Buy: 1.12%, Sell: 0.30% (STL only)" if same_day == "Same Day Trading" else "2x (buy 1.12% + sell 1.12%)"
+    fee_count = "Buy: 1.12%, Sell: 0.30% (STL only)" if same_day == "Day Trading" else "2x (buy 1.12% + sell 1.12%)"
 
     # Calculate gain/loss
     gain_loss = proceeds - total_cost
@@ -121,8 +121,8 @@ with tab1:
     with col2:
         st.metric("Sell Price", f"Rs. {sell_price:.2f}")
     with col3:
-        if same_day == "Same Day Trading":
-            st.metric("Sell Fee (STL 0.30%)", f"Rs. {sell_fee:.2f}", help="Only STL charged on same day sell")
+        if same_day == "Day Trading":
+            st.metric("Sell Fee (STL 0.30%)", f"Rs. {sell_fee:.2f}", help="Only STL charged on day trading")
         else:
             st.metric("Sell Fee (1.12%)", f"Rs. {sell_fee:.2f}")
     with col4:
@@ -156,8 +156,8 @@ with tab1:
     st.info(f"""
     **Fee Structure:**
     - Transaction Fee: **{FEE_PERCENTAGE}%** (includes 0.82% brokerage + 0.30% STL)
-    - Same Day Trading: Buy fee **1.12%**, Sell fee **0.30% (STL only)**
-    - Sell on Another Day: Fee charged **twice** (1.12% on buy and 1.12% on sell)
+    - Day Trading: Buy fee **1.12%**, Sell fee **0.30% (STL only)**
+    - Swing Trading: Fee charged **twice** (1.12% on buy and 1.12% on sell)
     """)
 
     with st.expander("📋 Detailed Breakdown"):
@@ -177,14 +177,14 @@ with tab1:
         **Break-Even Analysis:**
         - Avg Price: Rs. {avg_price:.4f}
         - B.E.S Price: Rs. {bes_price:.4f}
-        {f"- B.E.S = Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if same_day == 'Same Day Trading' else f"- B.E.S = Avg Price × 1.0112 = Rs. {avg_price:.4f} × 1.0112"}
+        {f"- B.E.S = Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if same_day == 'Day Trading' else f"- B.E.S = Avg Price × 1.0112 = Rs. {avg_price:.4f} × 1.0112"}
         - Price Move Needed: Rs. {price_move_needed:.4f} ({((price_move_needed / buy_price) * 100):.2f}% from buy price)
         
         **Sell Transaction:**
         - Sell Price: Rs. {sell_price:.2f}
         - Quantity: {quantity} stocks
         - Total Sell Value: Rs. {total_sell_value:.2f}
-        - Sell Fee: Rs. {sell_fee:.2f} {'(STL 0.30% only - same day)' if same_day == 'Same Day Trading' else f'({FEE_PERCENTAGE}% - full fee)'}
+        - Sell Fee: Rs. {sell_fee:.2f} {'(STL 0.30% only - day trading)' if same_day == 'Day Trading' else f'({FEE_PERCENTAGE}% - full fee)'}
         - **Proceeds: Rs. {proceeds:.2f}**
         
         **Summary:**
@@ -212,8 +212,8 @@ with tab2:
     
     be_same_day = st.radio(
         "Trading Type",
-        options=["Same Day Trading", "Sell on Another Day"],
-        help="Same day trading: No sell fee. Another day: Sell fee applies.",
+        options=["Day Trading", "Swing Trading"],
+        help="Day trading: No sell fee. Swing trading: Sell fee applies.",
         key="be_same_day"
     )
     
@@ -230,7 +230,7 @@ with tab2:
     # STL Rate (Share Transaction Levy)
     STL_RATE = 0.30 / 100
     
-    if be_same_day == "Same Day Trading":
+    if be_same_day == "Day Trading":
         # For same day: Only STL (0.30%) on sell
         # B.E.S Price = Total Cost / (Qty × (1 - 0.003))
         be_bes_price = be_total_cost / (be_quantity * (1 - STL_RATE))
@@ -289,9 +289,9 @@ with tab2:
                  help=f"Avg Price × Quantity")
     
     with col4:
-        if be_same_day == "Same Day Trading":
+        if be_same_day == "Day Trading":
             st.metric("Sell Fee (STL)", f"Rs. {be_sell_fee:.2f}", 
-                     help="STL 0.30% on same day sell")
+                     help="STL 0.30% on day trading")
         else:
             st.metric("Sell Fee at B.E.S", f"Rs. {be_sell_fee:.2f}",
                      help=f"Sell fee when selling at B.E.S price")
@@ -311,7 +311,7 @@ with tab2:
         target_profit = be_total_cost * (target_pct / 100)
         target_proceeds_needed = be_total_cost + target_profit
         
-        if be_same_day == "Same Day Trading":
+        if be_same_day == "Day Trading":
             # No sell fee: Sell Price × Qty = target_proceeds_needed
             target_sell_price = target_proceeds_needed / be_quantity
         else:
@@ -359,7 +359,7 @@ with tab2:
     # Calculate custom target sell price
     custom_proceeds_needed = be_total_cost + custom_profit_amount
     
-    if be_same_day == "Same Day Trading":
+    if be_same_day == "Day Trading":
         custom_sell_price = custom_proceeds_needed / be_quantity
     else:
         custom_sell_price = custom_proceeds_needed / (be_quantity * (1 - FEE_PERCENTAGE / 100))
@@ -393,14 +393,14 @@ with tab2:
     
     **B.E.S Price: Rs. {be_bes_price:.4f}**
     - Minimum price to break even
-    {f"- Formula: Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if be_same_day == 'Same Day Trading' else f"- Avg Price × 1.0112 = Rs. {be_avg_price:.4f} × 1.0112"}
+    {f"- Formula: Total Cost ÷ (Qty × 0.997) - includes 0.30% STL on sell" if be_same_day == 'Day Trading' else f"- Avg Price × 1.0112 = Rs. {be_avg_price:.4f} × 1.0112"}
     - Needs **{be_percentage_move_from_buy:.2f}%** increase from buy price
     
     **Total Cost: Rs. {be_total_cost:.2f}**
     - This is what you need to recover to break even
     
     **Fee Structure:**
-    {f"- Same Day: Buy 1.12%, Sell 0.30% (STL only)" if be_same_day == 'Same Day Trading' else f"- Multi-Day: Buy 1.12%, Sell 1.12% (full fees)"}
+    {f"- Day Trading: Buy 1.12%, Sell 0.30% (STL only)" if be_same_day == 'Day Trading' else f"- Swing Trading: Buy 1.12%, Sell 1.12% (full fees)"}
     """)
     
     # Detailed calculation
@@ -422,8 +422,8 @@ with tab2:
         - **Total Cost = Rs. {be_total_cost:.2f}**
         
         **Step 3: Calculate B.E.S Price**
-        {'- For Same Day: B.E.S Price = Total Cost ÷ (Qty × 0.997)' if be_same_day == 'Same Day Trading' else f'- For Another Day: B.E.S Price = Avg Price × 1.0112'}
-        {'- Accounts for 0.30% STL on sell' if be_same_day == 'Same Day Trading' else f'- B.E.S Price = Rs. {be_avg_price:.4f} × 1.0112'}
+        {'- For Day Trading: B.E.S Price = Total Cost ÷ (Qty × 0.997)' if be_same_day == 'Day Trading' else f'- For Swing Trading: B.E.S Price = Avg Price × 1.0112'}
+        {'- Accounts for 0.30% STL on sell' if be_same_day == 'Day Trading' else f'- B.E.S Price = Rs. {be_avg_price:.4f} × 1.0112'}
         - **B.E.S Price = Rs. {be_bes_price:.4f}**
         
         **Step 4: Price Movement Analysis**
@@ -434,6 +434,6 @@ with tab2:
         ```
         Avg Price = (Buy Price × Qty + Buy Fee) ÷ Qty
         Total Cost = Avg Price × Qty
-        {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [same day - includes STL]' if be_same_day == 'Same Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [another day - full fees]'}
+        {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [day trading - includes STL]' if be_same_day == 'Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [swing trading - full fees]'}
         ```
         """)
