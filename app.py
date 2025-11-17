@@ -14,8 +14,8 @@ tab1, tab2 = st.tabs(["💹 Single Trade Calculator", "⚖️ Break-Even Calcula
 # ==================== TAB 1: Original Calculator ====================
 with tab1:
     # Title and description
-    st.title("🪙 Trading Calculator")
-    st.markdown("Calculate your trading profits with transaction fees")
+    st.title("🪙 CalqTrade")
+    st.markdown("Calculate trading profits with transaction fees")
 
     # Input section
     st.subheader("Trade Details")
@@ -197,8 +197,8 @@ with tab1:
 
 # ==================== TAB 2: Break-Even Calculator ====================
 with tab2:
-    st.title("⚖️ Break-Even Calculator")
-    st.markdown("Calculate B.E.S Price (Break-Even Sell Price) from your buy price")
+    st.title("🪙 CalqTrade")
+    st.markdown("Calculate B.E.S Price (Break-Even Sell Price) from buy price")
     
     st.subheader("📊 Input Details")
     
@@ -437,4 +437,5 @@ with tab2:
         {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [same day - includes STL]' if be_same_day == 'Same Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [another day - full fees]'}
         ```
         """)
+
 
