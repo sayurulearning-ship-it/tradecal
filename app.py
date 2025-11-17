@@ -200,7 +200,7 @@ with tab2:
     st.title("🪙 CalqTrade")
     st.markdown("Calculate B.E.S Price (Break-Even Sell Price) from buy price")
     
-    st.subheader("📊 Input Details")
+    st.subheader("Input Details")
     
     col1, col2 = st.columns(2)
     
@@ -437,6 +437,7 @@ with tab2:
         {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [same day - includes STL]' if be_same_day == 'Same Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [another day - full fees]'}
         ```
         """)
+
 
 
 
