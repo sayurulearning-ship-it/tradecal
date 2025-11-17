@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # Page configuration
-st.set_page_config(page_title="Trading Calculator", page_icon="📊", layout="wide")
+st.set_page_config(page_title="CalqTrade", page_icon="🪙", layout="wide")
 
 # Fee percentage
 FEE_PERCENTAGE = 1.12
@@ -437,5 +437,6 @@ with tab2:
         {'B.E.S Price = Total Cost ÷ (Qty × 0.997) [same day - includes STL]' if be_same_day == 'Same Day Trading' else 'B.E.S Price = Avg Price × 1.0112 [another day - full fees]'}
         ```
         """)
+
 
 
